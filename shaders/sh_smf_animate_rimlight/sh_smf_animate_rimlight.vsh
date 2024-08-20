@@ -74,12 +74,12 @@ void main()
 	vec3 worldNormal = normalize((gm_Matrices[MATRIX_WORLD] * animNormal).xyz);
 	
 	//Simple directional lighting
-	v_vShade = .5 + max(0., -dot(worldNormal, u_lightDir));
+	v_vShade = .5 + .49 * dot(worldNormal, u_lightDir);
 	
 	//Rim lighting
 	mat4 V = gm_Matrices[MATRIX_VIEW];
 	v_vViewSpacePos = viewSpacePos.xyz;
 	v_vViewSpaceNormal = (V * vec4(worldNormal, 0.)).xyz;
 	float dp = .5 - .5 * dot(u_lightDir, vec3(V[0].z, V[1].z, V[2].z));
-	v_vRimLightStrength = mix(.5, 2.0, dp * dp);
+	v_vRimLightStrength = mix(.4, 1., dp * dp * dp);
 }

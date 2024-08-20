@@ -28,6 +28,8 @@ gpu_set_blendmode(bm_normal);
 //Draw the player
 shader_set(sh_smf_animate_rimlight);
 shader_set_uniform_f(shader_get_uniform(sh_smf_animate_rimlight, "u_lightDir"), global.lightDir[0], global.lightDir[1], global.lightDir[2]);
+shader_set_uniform_f(shader_get_uniform(sh_smf_animate_rimlight, "u_lightModifier"), 1.4 - .5 * global.lightModifier);
+texture_set_stage(shader_get_sampler_index(sh_smf_animate_rimlight, "u_lightLookup"), sprite_get_texture(global.colourStrip, 0.));
 var scale = 13;
 matrix_set(matrix_world, matrix_multiply(matrix_build(0, 0, -radius, 0, 0, 0, scale * xscale, scale * yscale, scale * zscale), charMat));
 mainInst.draw();

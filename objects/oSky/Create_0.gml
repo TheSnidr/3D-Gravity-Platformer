@@ -1,5 +1,9 @@
 /// @description
 
+
+global.lightModifier = 1;
+global.lightDir = [0, 0, -1];
+
 //Set some GPU settings
 gpu_set_texfilter(true);
 gpu_set_ztestenable(false);
@@ -30,7 +34,6 @@ shader_reset();
 surface_reset_target();
 bakedWorley = sprite_create_from_surface(s, 0, 0, worleySurfSize, worleySurfSize, 0, 0, 0, 0);
 surface_free(s);
-
 
 function addTri(vbuff, V1, V2, V3, u1, v1, u2, v2, u3, v3, texelSize)
 {
@@ -65,7 +68,6 @@ vertex_end(skyvbuff);
 var s = surface_create(octmapSize, octmapSize);
 surface_set_target(s);
 draw_clear(c_white);
-
 shader_set(sh_sky2);
 shader_set_uniform_f(shader_get_uniform(sh_sky2, "u_octmaptexelsize"), 1 / octmapSize);
 shader_set_uniform_f(shader_get_uniform(sh_sky2, "u_cells"), worleyLayerNumSqrt);
@@ -93,3 +95,30 @@ surface_reset_target();
 bakedSkyNoise = sprite_create_from_surface(s2, 0, 0, octmapSize, octmapSize, 0, 0, 0, 0);
 surface_free(s);
 surface_free(s2);
+
+//Create lighting lookup table
+var w = 64;
+var s = surface_create(w, 1);
+surface_set_target(s);
+draw_clear(c_black);
+shader_set(sh_generate_colourstrip);
+shader_set_uniform_f_array(shader_get_uniform(sh_generate_colourstrip, "u_col"), [
+	1.5, 1.5, 1.0, 0,
+	1.2, 1.2, 1.2, .1,
+	1., .9, .9, .3, 
+	.9, .6, .4, .4,
+	.6, .5, .4, .5,
+	.5, .5, .5, .7,
+	.3, .3, .5, .8,
+	.3, .25, .5, 1.]);
+draw_primitive_begin(pr_trianglestrip);
+draw_vertex(-1, -1);
+draw_vertex(1, -1);
+draw_vertex(-1, 1);
+draw_vertex(1, 1);
+draw_primitive_end();
+shader_reset();
+surface_reset_target();
+global.colourStrip = sprite_create_from_surface(s, 0, 0, w, 1, 0, 0, 0, 0);
+surface_free(s);
+//sprite_save(global.colourStrip, 0, get_save_filename("", ""))

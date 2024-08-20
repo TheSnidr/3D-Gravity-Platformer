@@ -6,7 +6,6 @@
 */
 window_set_fullscreen(true)
 screenShake = 0;
-global.lightDir = [0, 0, -1];
 
 view_enabled = true;
 view_visible[0] = true;

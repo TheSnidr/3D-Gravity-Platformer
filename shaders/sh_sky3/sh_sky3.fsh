@@ -2,16 +2,17 @@
 // Simple passthrough fragment shader
 //
 varying vec3 v_Pos;
-varying vec3 v_LookDir;
+varying float v_skyFade;
 varying vec2 v_vTexCoord;
+varying vec3 v_lightDir;
 
 uniform float u_time;
 uniform float u_cells;
 uniform float u_sparsity;
 uniform float u_texelSize;
 uniform float u_texScale;
+uniform float u_lightModifier;
 uniform vec3 u_invWorldSize;
-uniform vec3 u_lightDir;
 uniform vec3 u_sunColor;
 uniform vec3 u_skyColBright;
 uniform vec3 u_skyColDark;
@@ -77,17 +78,16 @@ float getCloudDensity(float noiseValue, float sparsity, vec3 p, float blendOffse
 void main()
 {
 	vec3 pos			= normalize(v_Pos);
-	vec3 rayPos			= pos - u_lightDir * .05;
+	vec3 rayPos			= pos - v_lightDir * .05;
 	vec4 noiseSample	= texture2D(gm_BaseTexture, v_vTexCoord);
 	vec4 raySample		= texture2D(gm_BaseTexture, getOctahedronCoord(rayPos));
 	vec2 worleySample	= readWorleyTexture(u_noiseSampler, pos * 70. + .5);
 	float timeAngle		= TwoPI * u_time;
 	float noise			= hash3to1(pos * 100.);
-	float lightDp		= dot(u_lightDir, pos);
-	float skyFade		= dot(v_LookDir, u_lightDir);
+	float lightDp		= dot(v_lightDir, pos);
 	float sparsity		= u_sparsity * max(1., 1. + lightDp);
 	float blendOffset	= dot(noiseSample, vec4(1., 1., -.5, -1.)) * 3.;
-	float dark			= clamp(lightDp * .5 + skyFade * 2. + .35 + noise * .05, 0., 1.);
+	float dark			= clamp(lightDp * .5 + v_skyFade * 2. + .35 + noise * .05, 0., 1.);
 	
 	//Create clouds
 	float smallClouds	= mix(worleySample.x, worleySample.y, .5 + .5 * sin(blendOffset * 10. + 30. * timeAngle));
@@ -95,7 +95,7 @@ void main()
 	float cloudDensity	= getCloudDensity(dot(noiseSample, cloudWeights), sparsity, pos,	blendOffset, smallClouds);
 	float rayDensity	= getCloudDensity(dot(raySample,   cloudWeights), sparsity, rayPos,	blendOffset, smallClouds);
 	float cloudVis		= min(cloudDensity * 6., .6 + .4 * cloudDensity);
-	float brightness	= .5 - .5 * skyFade;
+	float brightness	= .5 - .5 * v_skyFade;
 	vec3  cloudCol		= vec3(.7 + (1. - brightness * brightness) * .2 + dark * .4);							//Make clouds brighter if we look away from the sun
 	cloudCol			+= (.15 + .9 * cloudDensity * cloudDensity) * u_sunColor * min(.8, .5 + .5 * lightDp);	//Shine onto cloud normal
 	cloudCol			+= u_sunColor * max(1. - 1.8 * rayDensity, 0.) * max(0., .2 - lightDp * .9);			//Shine onto top of cloud, depending on the density at an offset position
@@ -108,21 +108,24 @@ void main()
 	vec3 nebula2		= pow((1. - noiseSample.a) * (1. - nebulaSample) * dot(1. - nebulaSample, vec3(1.)), vec3(5.));
 	vec3 nebula			= mix(nebula1, nebula2, nebulablend);
 	nebula				+= .15 * max(nebula.r, max(nebula.g, nebula.b));
-	vec3 darkCol		= mix(u_skyColDark, nebula, .2 + .6 * max(0., skyFade));
+	vec3 darkCol		= mix(u_skyColDark, nebula, .2 + .6 * max(0., v_skyFade));
 	
 	//Stars
-	float starBlend		= .5 + .4 * sin(blendOffset * 10. + 5. * timeAngle);
-	float starSample	= max(noiseSample.r, max(noiseSample.g, noiseSample.b)) * max(0., 1. - 4.5 * mix(worleySample.x, worleySample.y, starBlend));
+	float starBlend		= .5 + .45 * sin(blendOffset * 10. + 6. * timeAngle);
+	float starStrength	= max(noiseSample.r, max(noiseSample.g, noiseSample.b));
+	float starSample	= starStrength * starStrength * max(0., 1. - 4.5 * mix(worleySample.x, worleySample.y, starBlend));
 	darkCol				+= 15. * min((.7 + hsv2rgb(vec3(blendOffset * 10., 1., 1.))) * starSample * starSample * dark, 1.) * (1. - cloudVis);
 	
 	//Find blue background colour of bright side of skybox
-	vec3 skyCol = mix(u_skyColDark, u_skyColBright, clamp(.5 - .5 * lightDp - skyFade * .3 + noise * .005, 0., 1.));
+	float A = max(0., .2 - .5 * u_lightModifier);
+	A = 1. - A * A * A;
+	vec3 skyCol = A * mix(u_skyColDark, u_skyColBright, clamp(.5 - .5 * lightDp - v_skyFade * .3 + noise * .005, 0., 1.));
 	//Draw sun as a bright circle
 	skyCol		= mix(skyCol, u_sunColor, min(1., pow(max(0., - lightDp - 2. / 3.) * 3., 6.) + noise * .02));
 	//Mix in the dark side of the skybox
-	skyCol		= mix(skyCol, darkCol, dark + noise * .01);
+	skyCol		= mix(skyCol, A * darkCol, dark + noise * .01);
 	//Draw clouds
-	skyCol		= mix(skyCol, cloudCol, cloudVis + noise * .02);
+	skyCol		= mix(skyCol, cloudCol * A, cloudVis + noise * .02);
 	
 	gl_FragColor = vec4(skyCol, 1.);
 	

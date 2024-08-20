@@ -4,6 +4,8 @@
 gpu_set_texrepeat(true);
 shader_set(sh_planet);
 shader_set_uniform_f(shader_get_uniform(sh_planet, "u_lightDir"), global.lightDir[0], global.lightDir[1], global.lightDir[2]);
+shader_set_uniform_f(shader_get_uniform(sh_planet, "u_lightModifier"), 1.2 - .3 * global.lightModifier);
+texture_set_stage(shader_get_sampler_index(sh_planet, "u_lightLookup"), sprite_get_texture(global.colourStrip, 0.));
 var num = ds_list_size(geometryList);
 for (var i = 0; i < num; i ++)
 {
